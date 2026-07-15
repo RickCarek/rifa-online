@@ -44,9 +44,22 @@
   /* ── Prêmio ── */
   .premio{ margin:14px 12px 0; background:var(--carvao); border:1px solid var(--ouro-escuro); border-radius:16px;
     overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.5); }
-  .premio img{ width:100%; max-height:340px; object-fit:cover; display:block; }
   .premio .cap{ padding:10px 14px; font-size:13px; color:var(--ouro-claro); text-align:center;
     border-top:1px solid #2e2617; font-family:Georgia,serif; letter-spacing:.4px; }
+  /* ── Carrossel ── */
+  .carousel{ position:relative; }
+  .track{ display:flex; overflow-x:auto; scroll-snap-type:x mandatory; scroll-behavior:smooth;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .track::-webkit-scrollbar{ display:none; }
+  .slide{ flex:0 0 100%; scroll-snap-align:center; }
+  .slide img{ width:100%; aspect-ratio:1/1; object-fit:cover; display:block; background:#0a0805; }
+  .cbtn{ position:absolute; top:50%; transform:translateY(-50%); width:38px; height:38px; border:none;
+    border-radius:50%; background:rgba(10,8,5,.6); color:var(--ouro-claro); font-size:20px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; z-index:2; border:1px solid var(--ouro-escuro); }
+  .cbtn.prev{ left:10px; } .cbtn.next{ right:10px; }
+  .dots{ position:absolute; bottom:10px; left:0; right:0; display:flex; gap:6px; justify-content:center; z-index:2; }
+  .dot{ width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.4); border:none; padding:0; cursor:pointer; }
+  .dot.on{ background:var(--ouro); width:22px; border-radius:4px; }
   .toolbar{ display:flex; gap:6px; padding:10px 12px; flex-wrap:wrap; background:rgba(10,8,5,.97);
     position:sticky; top:0; z-index:19; }
   .filter{ background:var(--carvao); color:#cbb87a; border:1px solid #2e2617; padding:7px 12px; border-radius:20px;
@@ -117,8 +130,8 @@
   const ADMIN_EMAIL = "dono@rifa-rrc.app";       // conta do dono no Firebase Auth (login = PIN)
   const PIX_CHAVE   = "7ccd8ad3-e80f-455f-8e9f-643ed12d22eb";  // sua chave Pix (aleatória)
   const LOGO_IMG    = "logo.jpg";                // logomarca (mesma pasta)
-  const PRIZE_IMG   = "premio.jpg";              // foto do prêmio (mesma pasta)
-  const PRIZE_DESC  = "🎁 Prêmio: Perfume Montage — importado premium";  // legenda sob a foto
+  const PRIZE_IMGS  = ["premio1.webp", "premio2.webp"];  // fotos do prêmio (carrossel)
+  const PRIZE_DESC  = "🎁 Prêmio: Montage Intense — Grandeur Elite 100ml";  // legenda sob as fotos
 </script>
 
 <div id="setupwarn" class="warn hidden">⚠️ Firebase não configurado — cole as chaves no topo do arquivo.</div>
@@ -142,9 +155,12 @@
 </header>
 
 <div class="premio" id="premio" style="display:none">
-  <img id="premio-img" alt="Prêmio da rifa"
-    onload="document.getElementById('premio').style.display='block'"
-    onerror="document.getElementById('premio').style.display='none'">
+  <div class="carousel">
+    <div class="track" id="track"></div>
+    <button class="cbtn prev" id="c-prev" aria-label="anterior">‹</button>
+    <button class="cbtn next" id="c-next" aria-label="próxima">›</button>
+    <div class="dots" id="dots"></div>
+  </div>
   <div class="cap" id="premio-cap"></div>
 </div>
 
@@ -192,11 +208,50 @@ function boot(){
 
   // logo + foto do prêmio (se os arquivos existirem na pasta)
   if(LOGO_IMG) document.getElementById("logo").src = LOGO_IMG;
-  if(PRIZE_IMG){
-    document.getElementById("premio-img").src = PRIZE_IMG;   // o onload exibe o card
-    document.getElementById("premio-cap").textContent = PRIZE_DESC;
-  }
+  buildCarousel();
 }
+
+// ── Carrossel do prêmio ──────────────────────────────────────
+let cIdx=0, cTimer=null;
+function buildCarousel(){
+  const imgs=(typeof PRIZE_IMGS!=="undefined"?PRIZE_IMGS:[]).filter(Boolean);
+  if(!imgs.length) return;
+  const track=document.getElementById("track");
+  const dots=document.getElementById("dots");
+  let loaded=false;
+  track.innerHTML=""; dots.innerHTML="";
+  imgs.forEach((src,i)=>{
+    const s=document.createElement("div"); s.className="slide";
+    const im=document.createElement("img"); im.alt="Prêmio da rifa "+(i+1); im.loading="eager";
+    im.onload=()=>{ if(!loaded){ loaded=true; document.getElementById("premio").style.display="block"; } };
+    im.src=src; s.appendChild(im); track.appendChild(s);
+    if(imgs.length>1){
+      const d=document.createElement("button"); d.className="dot"+(i===0?" on":"");
+      d.onclick=()=>goSlide(i); dots.appendChild(d);
+    }
+  });
+  document.getElementById("premio-cap").textContent = PRIZE_DESC;
+  const single = imgs.length<2;
+  document.getElementById("c-prev").style.display = single?"none":"";
+  document.getElementById("c-next").style.display = single?"none":"";
+  if(single) return;
+  document.getElementById("c-prev").onclick=()=>goSlide(cIdx-1);
+  document.getElementById("c-next").onclick=()=>goSlide(cIdx+1);
+  track.onscroll=()=>{ const i=Math.round(track.scrollLeft/track.clientWidth); if(i!==cIdx) setDot(i); };
+  startAuto(imgs.length);
+}
+function goSlide(i){
+  const track=document.getElementById("track");
+  const n=track.children.length; if(!n) return;
+  cIdx=(i+n)%n;
+  track.scrollTo({left:cIdx*track.clientWidth, behavior:"smooth"});
+  setDot(cIdx); startAuto(n); // reinicia o timer ao interagir
+}
+function setDot(i){ cIdx=i; document.querySelectorAll(".dot").forEach((d,j)=>d.classList.toggle("on",j===i)); }
+function startAuto(n){ if(cTimer) clearInterval(cTimer); if(n<2) return;
+  cTimer=setInterval(()=>goSlideAuto(n),5000); }
+function goSlideAuto(n){ const track=document.getElementById("track"); cIdx=(cIdx+1)%n;
+  track.scrollTo({left:cIdx*track.clientWidth, behavior:"smooth"}); setDot(cIdx); }
 
 function setAdmin(on){
   isAdmin = on;
