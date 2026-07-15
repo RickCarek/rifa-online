@@ -297,14 +297,41 @@ function closeNum(){ document.getElementById("overlay").classList.remove("open")
 
 document.getElementById("btn-admin").onclick=async function(){
   if(isAdmin){ await auth.signOut(); return; }
-  const p=prompt("PIN do dono:");
-  if(p===null || !p.trim()) return;
-  try{
-    await auth.signInWithEmailAndPassword(ADMIN_EMAIL, p.trim());
-  }catch(e){
-    alert("PIN incorreto.");
-  }
+  openLogin();
 };
+
+// Caixa de PIN dentro da página (funciona no navegador do WhatsApp, onde prompt() é bloqueado)
+function openLogin(){
+  current=null;
+  const sheet=document.getElementById("sheet");
+  sheet.innerHTML =
+    '<h2>Modo dono</h2><span class="badge livre">ACESSO RESTRITO</span>'+
+    '<label>PIN do dono</label>'+
+    '<input id="in-pin" type="password" inputmode="numeric" autocomplete="off" placeholder="Digite seu PIN">'+
+    '<div id="pin-erro" class="locknote" style="display:none">PIN incorreto. Tente novamente.</div>'+
+    '<div class="btns">'+
+    '<button class="btn btn-pago" id="btn-entrar">🔓 Entrar</button>'+
+    '<button class="btn btn-fechar" onclick="closeNum()">Cancelar</button></div>';
+  document.getElementById("overlay").classList.add("open");
+  const inp=document.getElementById("in-pin");
+  const go=async()=>{
+    const p=(inp.value||"").trim();
+    if(!p) return;
+    document.getElementById("pin-erro").style.display="none";
+    const btn=document.getElementById("btn-entrar");
+    btn.textContent="Entrando…"; btn.disabled=true;
+    try{
+      await auth.signInWithEmailAndPassword(ADMIN_EMAIL, p);
+      closeNum(); // sucesso — onAuthStateChanged ativa o modo dono
+    }catch(e){
+      document.getElementById("pin-erro").style.display="block";
+      btn.textContent="🔓 Entrar"; btn.disabled=false;
+    }
+  };
+  document.getElementById("btn-entrar").onclick=go;
+  inp.onkeydown=e=>{ if(e.key==="Enter") go(); };
+  setTimeout(()=>inp.focus(),100);
+}
 document.getElementById("search").oninput=render;
 document.querySelectorAll(".filter").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".filter").forEach(x=>x.classList.remove("active"));
