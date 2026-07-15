@@ -147,6 +147,8 @@
   const PRIZE_IMGS  = ["premio1.webp", "premio2.webp"];  // fotos do prêmio (carrossel)
   const PRIZE_DESC  = "🎁 Prêmio: Montage Intense — Grandeur Elite 100ml";  // legenda sob as fotos
   const RESERVE_MIN = 30;        // reserva expira em X minutos se não pagar (volta a ficar livre)
+  const TG_TOKEN    = "8817534278:AAERYXBGGOTHf2QtWOj-y0C2gg96q6uD5hQ";  // token do bot do Telegram (@rifa_rrc_avisos_bot)
+  const TG_CHAT     = "641715599";  // chat id do organizador no Telegram
 </script>
 
 <div id="setupwarn" class="warn hidden">⚠️ Firebase não configurado — cole as chaves no topo do arquivo.</div>
@@ -452,10 +454,24 @@ function mark(status){
     else if(err){ alert("Não foi possível salvar (regras de segurança). "+err); closeNum(); }
     else if(status==="reservado" && !isAdmin){
       saveBuyer(nome.trim(), tel.trim());       // lembra pro próximo número
+      notifyReserva(current, nome.trim(), tel.trim()); // avisa o dono no Telegram
       showPixConfirm(current);                  // mostra a chave Pix pra copiar
     }
     else closeNum();
   });
+}
+// Avisa o organizador no Telegram a cada reserva (best-effort, nunca trava a reserva)
+function notifyReserva(n, nome, tel){
+  if(!TG_TOKEN || TG_TOKEN==="COLE_AQUI" || !TG_CHAT || TG_CHAT==="COLE_AQUI") return;
+  const quando = new Date().toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+  const msg = "🔔 Nova reserva na rifa!\n\n"+
+              "🎟️ Número "+pad(n)+"\n"+
+              "👤 "+(nome||"—")+"\n"+
+              "📱 "+(tel||"—")+"\n"+
+              "🕒 "+quando;
+  const url = "https://api.telegram.org/bot"+TG_TOKEN+"/sendMessage?chat_id="+
+              encodeURIComponent(TG_CHAT)+"&text="+encodeURIComponent(msg);
+  try{ fetch(url).catch(()=>{ fetch(url,{mode:"no-cors"}).catch(()=>{}); }); }catch(e){}
 }
 function liberar(){
   if(!isAdmin){ return; }
