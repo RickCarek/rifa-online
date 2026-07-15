@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Rifa · RRC Importados e Perfumaria</title>
+<style>
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root{
+    --ouro:#d4af37; --ouro-claro:#f0c75e; --ouro-escuro:#9a7b1e;
+    --preto:#0a0805; --carvao:#171310; --carvao-2:#221c15;
+    --livre:#171310; --livre-b:#3a3226; --livre-t:#cbb87a;
+    --reserv:#8a6d1f; --reserv-b:#c9a83a; --reserv-t:#fff6da;
+    --pago:linear-gradient(135deg,#d4af37,#f0c75e 55%,#b8912c); --pago-b:#f0c75e; --pago-t:#1a1406;
+  }
+  html{ background:var(--preto); }
+  body{ margin:0 auto; max-width:560px; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:radial-gradient(1200px 500px at 50% -100px,#2a2115 0%,var(--preto) 60%); color:#e8e0cc; padding:0 0 90px;
+    box-shadow:0 0 40px rgba(0,0,0,.8); min-height:100vh; }
+  header{ position:sticky; top:0; z-index:20; background:rgba(10,8,5,.97); color:#fff; padding:14px 16px 12px;
+    box-shadow:0 2px 16px rgba(0,0,0,.6); border-bottom:1px solid #2e2617; }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .brand img{ width:52px; height:52px; border-radius:50%; border:2px solid var(--ouro); object-fit:cover;
+    box-shadow:0 0 14px rgba(212,175,55,.35); }
+  h1{ font-size:19px; margin:0; color:var(--ouro-claro); letter-spacing:.5px; font-family:Georgia,"Times New Roman",serif; }
+  .sub{ font-size:12px; color:#a89968; }
+  #conn{ font-size:11px; margin-top:4px; color:#fca5a5; }
+  #conn.ok{ color:#e3c565; }
+  .stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:12px; }
+  .stat{ background:var(--carvao); border:1px solid #2e2617; border-radius:10px; padding:8px 4px; text-align:center; }
+  .stat b{ display:block; font-size:18px; line-height:1.1; color:#f5ecd2; }
+  .stat span{ font-size:10px; color:#a89968; text-transform:uppercase; letter-spacing:.5px; }
+  .total{ margin-top:8px; text-align:center; background:linear-gradient(135deg,#2a2115,#1a1406); border:1px solid var(--ouro-escuro);
+    border-radius:10px; padding:8px; font-size:14px; color:var(--ouro-claro); }
+  .total b{ font-size:17px; color:#f5ecd2; }
+  /* ── Prêmio ── */
+  .premio{ margin:14px 12px 0; background:var(--carvao); border:1px solid var(--ouro-escuro); border-radius:16px;
+    overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.5); }
+  .premio img{ width:100%; max-height:340px; object-fit:cover; display:block; }
+  .premio .cap{ padding:10px 14px; font-size:13px; color:var(--ouro-claro); text-align:center;
+    border-top:1px solid #2e2617; font-family:Georgia,serif; letter-spacing:.4px; }
+  .toolbar{ display:flex; gap:6px; padding:10px 12px; flex-wrap:wrap; background:rgba(10,8,5,.97);
+    position:sticky; top:0; z-index:19; }
+  .filter{ background:var(--carvao); color:#cbb87a; border:1px solid #2e2617; padding:7px 12px; border-radius:20px;
+    font-size:13px; font-weight:600; }
+  .filter.active{ background:var(--ouro); color:#1a1406; border-color:var(--ouro-claro); }
+  #search{ flex:1; min-width:120px; background:var(--carvao); color:#f5ecd2; border:1px solid #3a3226;
+    border-radius:20px; padding:7px 14px; font-size:14px; }
+  #search::placeholder{ color:#7a6c48; }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(58px,1fr)); gap:6px; padding:12px; }
+  .num{ aspect-ratio:1; border-radius:10px; border:2px solid var(--livre-b); background:var(--livre);
+    color:var(--livre-t); font-size:15px; font-weight:700; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; cursor:pointer; position:relative; padding:2px; }
+  .num:active{ transform:scale(.93); }
+  .num small{ font-size:8px; font-weight:600; max-width:100%; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap; opacity:.85; }
+  .num.reservado{ background:var(--reserv); border-color:var(--reserv-b); color:var(--reserv-t); }
+  .num.pago{ background:var(--pago); border-color:var(--pago-b); color:var(--pago-t); }
+  .num.pago::after{ content:"🔒"; position:absolute; top:2px; right:4px; font-size:9px; }
+  .hidden{ display:none !important; }
+  .overlay{ position:fixed; inset:0; background:rgba(0,0,0,.72); display:none; align-items:flex-end; z-index:50; }
+  .overlay.open{ display:flex; }
+  .sheet{ background:#14100a; border-top:2px solid var(--ouro); color:#e8e0cc; width:100%;
+    border-radius:20px 20px 0 0; padding:20px 18px 28px; animation:up .2s ease; }
+  @keyframes up{ from{transform:translateY(100%);} to{transform:translateY(0);} }
+  .sheet h2{ margin:0 0 2px; font-size:22px; color:var(--ouro-claro); font-family:Georgia,serif; }
+  .badge{ display:inline-block; font-size:12px; font-weight:700; padding:3px 10px; border-radius:20px; margin-bottom:14px; }
+  .badge.livre{ background:var(--livre); color:var(--livre-t); border:1px solid var(--livre-b); }
+  .badge.reservado{ background:var(--reserv); color:var(--reserv-t); }
+  .badge.pago{ background:var(--pago); color:var(--pago-t); }
+  label{ font-size:12px; color:#a89968; font-weight:600; display:block; margin:10px 0 4px; }
+  .sheet input{ width:100%; padding:11px 12px; background:#221c15; border:1px solid #3a3226; color:#f5ecd2;
+    border-radius:10px; font-size:16px; }
+  .btns{ display:flex; flex-direction:column; gap:8px; margin-top:18px; }
+  .btn{ border:none; border-radius:12px; padding:14px; font-size:15px; font-weight:700; cursor:pointer; }
+  .btn-pago{ background:linear-gradient(135deg,#d4af37,#f0c75e); color:#1a1406; }
+  .btn-reservar{ background:#8a6d1f; color:#fff6da; }
+  .btn-liberar{ background:transparent; color:#e07070; border:1.5px solid #6e2a2a; }
+  .btn-fechar{ background:#221c15; color:#cbb87a; border:1px solid #3a3226; }
+  .locknote{ background:#241b06; border:1px solid #6e5716; color:#e3c565; font-size:13px;
+    padding:10px 12px; border-radius:10px; margin-top:6px; }
+  .pixnote{ background:#101d24; border:1px solid #23495c; color:#8ecae6; font-size:13px;
+    padding:10px 12px; border-radius:10px; margin-top:10px; word-break:break-all; }
+  .footbar{ position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:560px;
+    background:rgba(10,8,5,.97); display:flex; gap:8px;
+    padding:10px 12px; z-index:30; box-shadow:0 -2px 16px rgba(0,0,0,.6); border-top:1px solid #2e2617; }
+  .footbar button{ flex:1; background:var(--carvao); color:#cbb87a; border:1px solid #3a3226; border-radius:10px;
+    padding:11px; font-size:13px; font-weight:600; }
+  .footbar button.on{ background:var(--ouro); color:#1a1406; border-color:var(--ouro-claro); }
+  .warn{ background:#7f1d1d; color:#fff; padding:10px 14px; font-size:13px; text-align:center; }
+</style>
+</head>
+<body>
+<!-- ============================================================= -->
+<!--  CONFIGURAÇÃO — Firebase já preenchido (projeto rifa-online)   -->
+<!-- ============================================================= -->
+<script>
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyAnFX0v1luavjutbNqtXt51zJIkUVZoKzs",
+    authDomain: "rifa-online-bcaca.firebaseapp.com",
+    databaseURL: "https://rifa-online-bcaca-default-rtdb.firebaseio.com",
+    projectId: "rifa-online-bcaca",
+    appId: "1:635661178575:web:a7c76549503c94abd809ba"
+  };
+  const TOTAL       = 200;                       // quantidade de números
+  const PRICE       = 4.99;                      // valor de cada número
+  const TITLE       = "RRC Importados e Perfumaria";
+  const SUBTITLE    = "Rifa Premium";
+  const ADMIN_EMAIL = "dono@rifa-rrc.app";       // conta do dono no Firebase Auth (login = PIN)
+  const PIX_CHAVE   = "7ccd8ad3-e80f-455f-8e9f-643ed12d22eb";  // sua chave Pix (aleatória)
+  const LOGO_IMG    = "logo.jpg";                // logomarca (mesma pasta)
+  const PRIZE_IMG   = "premio.jpg";              // foto do prêmio (mesma pasta)
+  const PRIZE_DESC  = "🎁 Prêmio: Perfume Montage — importado premium";  // legenda sob a foto
+</script>
+
+<div id="setupwarn" class="warn hidden">⚠️ Firebase não configurado — cole as chaves no topo do arquivo.</div>
+
+<header>
+  <div class="brand">
+    <img id="logo" src="" alt="" onerror="this.style.display='none'">
+    <div>
+      <h1 id="title">Rifa</h1>
+      <div class="sub" id="cfgline"></div>
+      <div id="conn">conectando…</div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><b id="s-livre">–</b><span>Livres</span></div>
+    <div class="stat"><b id="s-reserv" style="color:#e3c565">–</b><span>Reservados</span></div>
+    <div class="stat"><b id="s-pago" style="color:#f0c75e">–</b><span>Pagos</span></div>
+    <div class="stat"><b id="s-total">–</b><span>Total</span></div>
+  </div>
+  <div class="total">Arrecadado: <b id="s-money">R$ 0</b></div>
+</header>
+
+<div class="premio" id="premio" style="display:none">
+  <img id="premio-img" src="" alt="Prêmio da rifa" onerror="document.getElementById('premio').style.display='none'">
+  <div class="cap" id="premio-cap"></div>
+</div>
+
+<div class="toolbar">
+  <button class="filter active" data-f="todos">Todos</button>
+  <button class="filter" data-f="livre">Livres</button>
+  <button class="filter" data-f="reservado">Reservados</button>
+  <button class="filter" data-f="pago">Pagos</button>
+  <input id="search" placeholder="Buscar nº ou nome...">
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="footbar">
+  <button id="btn-admin">🔑 Modo dono</button>
+</div>
+
+<div class="overlay" id="overlay"><div class="sheet" id="sheet"></div></div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script>
+let db=null, auth=null, state={}, filter="todos", current=null, isAdmin=false;
+
+function boot(){
+  if(FIREBASE_CONFIG.apiKey==="COLE_AQUI"){
+    document.getElementById("setupwarn").classList.remove("hidden");
+    document.getElementById("conn").textContent="sem configuração";
+    render(); return;
+  }
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db   = firebase.database();
+  auth = firebase.auth();
+  auth.onAuthStateChanged(u=>{ setAdmin(!!u); });
+  db.ref(".info/connected").on("value", s=>{
+    const on = s.val()===true;
+    const c = document.getElementById("conn");
+    c.textContent = on ? "● conectado — atualiza em tempo real" : "● offline";
+    c.className = on ? "ok" : "";
+  });
+  db.ref("nums").on("value", snap=>{ state = snap.val()||{}; render(); });
+  render(); // desenha o quadro imediatamente, mesmo antes do banco responder
+
+  // logo + foto do prêmio (se os arquivos existirem na pasta)
+  if(LOGO_IMG) document.getElementById("logo").src = LOGO_IMG;
+  if(PRIZE_IMG){
+    document.getElementById("premio").style.display = "block";
+    document.getElementById("premio-img").src = PRIZE_IMG;
+    document.getElementById("premio-cap").textContent = PRIZE_DESC;
+  }
+}
+
+function setAdmin(on){
+  isAdmin = on;
+  const b = document.getElementById("btn-admin");
+  b.classList.toggle("on", on);
+  b.textContent = on ? "🔓 Dono (ativo)" : "🔑 Modo dono";
+}
+
+function st(n){ return (state[n] && state[n].status) || "livre"; }
+function pad(n){ return String(n).padStart(3,"0"); }
+function money(v){ return "R$ "+Number(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function render(){
+  document.getElementById("title").textContent = TITLE;
+  document.getElementById("cfgline").textContent = SUBTITLE+" · Cada número: "+money(PRICE);
+  document.getElementById("s-total").textContent = TOTAL;
+  const grid = document.getElementById("grid"); grid.innerHTML="";
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  let l=0,r=0,p=0;
+  for(let n=1;n<=TOTAL;n++){
+    const s=st(n); s==="livre"?l++:s==="reservado"?r++:p++;
+    const rec=state[n]||{};
+    let show=(filter==="todos"||filter===s);
+    if(q){ show = show && (pad(n)+" "+(rec.nome||"")).toLowerCase().includes(q); }
+    const el=document.createElement("div");
+    el.className="num "+s+(show?"":" hidden");
+    el.innerHTML=pad(n)+(rec.nome?('<small>'+esc(rec.nome)+'</small>'):"");
+    el.onclick=()=>openNum(n);
+    grid.appendChild(el);
+  }
+  document.getElementById("s-livre").textContent=l;
+  document.getElementById("s-reserv").textContent=r;
+  document.getElementById("s-pago").textContent=p;
+  document.getElementById("s-money").textContent=money(p*PRICE);
+}
+
+function openNum(n){
+  current=n; const s=st(n); const rec=state[n]||{nome:"",tel:""};
+  const sheet=document.getElementById("sheet");
+  let h='<h2>Número '+pad(n)+'</h2><span class="badge '+s+'">'+lab(s)+'</span>';
+
+  if(s==="pago"){
+    h+='<div class="locknote">🔒 Vendido'+(isAdmin?(' para <b>'+esc(rec.nome||"—")+'</b>'+(rec.tel?(' · '+esc(rec.tel)):'')):'')+'. Número travado.</div>';
+    h+='<div class="btns">';
+    if(isAdmin) h+='<button class="btn btn-liberar" onclick="liberar()">Desbloquear e liberar</button>';
+    h+='<button class="btn btn-fechar" onclick="closeNum()">Fechar</button></div>';
+  }
+  else if(s==="reservado"){
+    if(isAdmin){
+      h+='<label>Comprador</label><input id="in-nome" value="'+esc(rec.nome||"")+'">';
+      h+='<label>WhatsApp</label><input id="in-tel" value="'+esc(rec.tel||"")+'">';
+      h+='<div class="btns">';
+      h+='<button class="btn btn-pago" onclick="mark(\'pago\')">✅ Confirmar Pix (pago)</button>';
+      h+='<button class="btn btn-liberar" onclick="liberar()">Liberar número</button>';
+      h+='<button class="btn btn-fechar" onclick="closeNum()">Fechar</button></div>';
+    } else {
+      h+='<div class="locknote">⏳ Reservado, aguardando confirmação do pagamento.</div>';
+      h+='<div class="btns"><button class="btn btn-fechar" onclick="closeNum()">Fechar</button></div>';
+    }
+  }
+  else { // livre
+    h+='<label>Seu nome</label><input id="in-nome" value="'+esc(rec.nome||"")+'" placeholder="Nome">';
+    h+='<label>WhatsApp</label><input id="in-tel" value="'+esc(rec.tel||"")+'" placeholder="(00) 00000-0000">';
+    if(PIX_CHAVE) h+='<div class="pixnote">Após reservar, faça o Pix de '+money(PRICE)+' para a chave: <b>'+esc(PIX_CHAVE)+'</b> e avise o organizador.</div>';
+    h+='<div class="btns"><button class="btn btn-reservar" onclick="mark(\'reservado\')">⏳ Reservar este número</button>';
+    if(isAdmin) h+='<button class="btn btn-pago" onclick="mark(\'pago\')">✅ Marcar pago (dono)</button>';
+    h+='<button class="btn btn-fechar" onclick="closeNum()">Fechar</button></div>';
+  }
+  sheet.innerHTML=h;
+  document.getElementById("overlay").classList.add("open");
+}
+function lab(s){ return s==="pago"?"VENDIDO ✓":s==="reservado"?"RESERVADO":"LIVRE"; }
+
+function mark(status){
+  if(!db){ alert("Firebase não configurado."); return; }
+  if(status==="pago" && !isAdmin){ alert("Só o dono confirma pagamento."); return; }
+  const nome=(document.getElementById("in-nome")||{}).value||"";
+  const tel=(document.getElementById("in-tel")||{}).value||"";
+  if(!nome.trim()){ alert("Digite o nome."); return; }
+  // trava anti-duplicidade: não deixa reservar/pagar por cima de um já pago
+  // (garantida também no servidor pelas regras do Realtime Database)
+  const ref=db.ref("nums/"+current);
+  ref.transaction(cur=>{
+    if(cur && cur.status==="pago" && !isAdmin) return; // aborta
+    return { status, nome:nome.trim(), tel:tel.trim(), ts:Date.now() };
+  }, (err,committed)=>{
+    if(!committed && !err) alert("Esse número já foi vendido.");
+    else if(err) alert("Não foi possível salvar (regras de segurança). "+err);
+    closeNum();
+  });
+}
+function liberar(){
+  if(!isAdmin){ return; }
+  if(!confirm("Liberar o número "+pad(current)+"?")) return;
+  db.ref("nums/"+current).remove(); closeNum();
+}
+function closeNum(){ document.getElementById("overlay").classList.remove("open"); current=null; }
+
+document.getElementById("btn-admin").onclick=async function(){
+  if(isAdmin){ await auth.signOut(); return; }
+  const p=prompt("PIN do dono:");
+  if(p===null || !p.trim()) return;
+  try{
+    await auth.signInWithEmailAndPassword(ADMIN_EMAIL, p.trim());
+  }catch(e){
+    alert("PIN incorreto.");
+  }
+};
+document.getElementById("search").oninput=render;
+document.querySelectorAll(".filter").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".filter").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); filter=b.dataset.f; render();
+});
+document.getElementById("overlay").onclick=e=>{ if(e.target.id==="overlay") closeNum(); };
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
+
+boot();
+</script>
+</body>
+</html>
