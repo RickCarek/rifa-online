@@ -117,7 +117,7 @@
 
 <header>
   <div class="brand">
-    <img id="logo" src="" alt="" onerror="this.style.display='none'">
+    <img id="logo" alt="" style="display:none" onload="this.style.display=''" onerror="this.style.display='none'">
     <div>
       <h1 id="title">Rifa</h1>
       <div class="sub" id="cfgline"></div>
@@ -134,7 +134,9 @@
 </header>
 
 <div class="premio" id="premio" style="display:none">
-  <img id="premio-img" src="" alt="Prêmio da rifa" onerror="document.getElementById('premio').style.display='none'">
+  <img id="premio-img" alt="Prêmio da rifa"
+    onload="document.getElementById('premio').style.display='block'"
+    onerror="document.getElementById('premio').style.display='none'">
   <div class="cap" id="premio-cap"></div>
 </div>
 
@@ -183,8 +185,7 @@ function boot(){
   // logo + foto do prêmio (se os arquivos existirem na pasta)
   if(LOGO_IMG) document.getElementById("logo").src = LOGO_IMG;
   if(PRIZE_IMG){
-    document.getElementById("premio").style.display = "block";
-    document.getElementById("premio-img").src = PRIZE_IMG;
+    document.getElementById("premio-img").src = PRIZE_IMG;   // o onload exibe o card
     document.getElementById("premio-cap").textContent = PRIZE_DESC;
   }
 }
