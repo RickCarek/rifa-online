@@ -146,6 +146,7 @@
   const LOGO_IMG    = "logo.jpg";                // logomarca (mesma pasta)
   const PRIZE_IMGS  = ["premio1.webp", "premio2.webp"];  // fotos do prêmio (carrossel)
   const PRIZE_DESC  = "🎁 Prêmio: Montage Intense — Grandeur Elite 100ml";  // legenda sob as fotos
+  const RESERVE_MIN = 30;        // reserva expira em X minutos se não pagar (volta a ficar livre)
 </script>
 
 <div id="setupwarn" class="warn hidden">⚠️ Firebase não configurado — cole as chaves no topo do arquivo.</div>
@@ -229,6 +230,7 @@ function boot(){
   });
   db.ref("nums").on("value", snap=>{ state = snap.val()||{}; render(); });
   render(); // desenha o quadro imediatamente, mesmo antes do banco responder
+  setInterval(render, 15000); // reservas expiradas voltam a ficar livres sem precisar recarregar
 
   // logo + foto do prêmio (se os arquivos existirem na pasta)
   if(LOGO_IMG) document.getElementById("logo").src = LOGO_IMG;
@@ -290,7 +292,27 @@ function getBuyer(){ try{ return JSON.parse(localStorage.getItem("rifa_comprador
 function saveBuyer(nome,tel){ try{ localStorage.setItem("rifa_comprador", JSON.stringify({nome,tel})); }catch(e){} }
 function clearBuyer(){ try{ localStorage.removeItem("rifa_comprador"); }catch(e){} closeNum(); openNum(current); }
 
-function st(n){ return (state[n] && state[n].status) || "livre"; }
+const RESERVE_MS = RESERVE_MIN*60000;
+function rawSt(n){ return (state[n] && state[n].status) || "livre"; }
+// reserva expirada? (passou do prazo sem virar "pago")
+function isExpired(n){ const r=state[n]; return !!(r && r.status==="reservado" && r.ts && (Date.now()-r.ts > RESERVE_MS)); }
+// status efetivo: pro comprador, reserva expirada conta como livre; o dono continua vendo como reservado
+function st(n){ if(!isAdmin && isExpired(n)) return "livre"; return rawSt(n); }
+// contador regressivo da reserva
+let cdTimer=null;
+function fmtLeft(ms){ if(ms<0)ms=0; const s=Math.floor(ms/1000); return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0"); }
+function startCountdown(ts){
+  if(cdTimer){ clearInterval(cdTimer); cdTimer=null; }
+  const end = ts + RESERVE_MS;
+  const tick=()=>{
+    const el=document.getElementById("cd");
+    if(!el){ if(cdTimer){clearInterval(cdTimer);cdTimer=null;} return; }
+    const left=end-Date.now();
+    if(left<=0){ clearInterval(cdTimer); cdTimer=null; closeNum(); render(); return; }
+    el.textContent=fmtLeft(left);
+  };
+  tick(); cdTimer=setInterval(tick,1000);
+}
 function pad(n){ return String(n).padStart(3,"0"); }
 function money(v){ return "R$ "+Number(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}); }
 
@@ -308,7 +330,7 @@ function render(){
     if(q){ show = show && (pad(n)+" "+(rec.nome||"")).toLowerCase().includes(q); }
     const el=document.createElement("div");
     el.className="num "+s+(show?"":" hidden");
-    el.innerHTML=pad(n)+(rec.nome?('<small>'+esc(rec.nome)+'</small>'):"");
+    el.innerHTML=pad(n)+((s!=="livre"&&rec.nome)?('<small>'+esc(rec.nome)+'</small>'):"");
     el.onclick=()=>openNum(n);
     grid.appendChild(el);
   }
@@ -346,6 +368,7 @@ function openNum(n){
   }
   else if(s==="reservado"){
     if(isAdmin){
+      if(isExpired(n)) h+='<div class="locknote">⚠️ Reserva expirada (já liberada para novos compradores). Confirme só se o pagamento chegou.</div>';
       h+='<label>Comprador</label><input id="in-nome" value="'+esc(rec.nome||"")+'">';
       h+='<label>WhatsApp</label><input id="in-tel" value="'+esc(rec.tel||"")+'">';
       h+='<div class="btns">';
@@ -353,15 +376,15 @@ function openNum(n){
       h+='<button class="btn btn-liberar" onclick="liberar()">Liberar número</button>';
       h+='<button class="btn btn-fechar" onclick="closeNum()">Fechar</button></div>';
     } else {
-      h+='<div class="locknote">⏳ Reservado, aguardando confirmação do pagamento.</div>';
+      h+='<div class="locknote">⏳ Reservado — pague antes que o tempo acabe: <b id="cd">--:--</b></div>';
       h+=pixBlock();
       h+='<div class="btns"><button class="btn btn-fechar" onclick="closeNum()">Fechar</button></div>';
     }
   }
-  else { // livre
+  else { // livre (inclui reservas expiradas na visão do comprador)
     const b = getBuyer();
-    const nome0 = rec.nome || b.nome || "";
-    const tel0  = rec.tel  || b.tel  || "";
+    const nome0 = b.nome || "";
+    const tel0  = b.tel  || "";
     h+='<label>Seu nome</label><input id="in-nome" value="'+esc(nome0)+'" placeholder="Nome">';
     h+='<label>WhatsApp</label><input id="in-tel" value="'+esc(tel0)+'" placeholder="(00) 00000-0000">';
     if(b.nome && !isAdmin) h+='<div class="pixnote" style="background:#122015;border-color:#2f5c3a;color:#8ee6a5">✓ Dados salvos neste aparelho — é só reservar. <a href="#" onclick="clearBuyer();return false" style="color:#8ecae6">não sou eu</a></div>';
@@ -372,6 +395,7 @@ function openNum(n){
   }
   sheet.innerHTML=h;
   document.getElementById("overlay").classList.add("open");
+  if(s==="reservado" && !isAdmin && rec.ts) startCountdown(rec.ts); // conta o tempo restante
 }
 function lab(s){ return s==="pago"?"VENDIDO ✓":s==="reservado"?"RESERVADO":"LIVRE"; }
 
@@ -392,10 +416,13 @@ function showPixConfirm(n){
   current=n;
   const sheet=document.getElementById("sheet");
   let h='<h2>Número '+pad(n)+' reservado! ✅</h2><span class="badge reservado">RESERVADO</span>';
+  h+='<div class="locknote">⏳ Você tem <b id="cd">'+fmtLeft(RESERVE_MS)+'</b> para pagar, senão o número volta a ficar livre.</div>';
   h+=pixBlock();
   h+='<div class="btns"><button class="btn btn-fechar" onclick="closeNum()">Fechar</button></div>';
   sheet.innerHTML=h;
   document.getElementById("overlay").classList.add("open");
+  const ts=(state[n]&&state[n].ts)||Date.now();
+  startCountdown(ts);
 }
 function copyPix(){
   const inp=document.getElementById("pix-key");
@@ -435,7 +462,7 @@ function liberar(){
   if(!confirm("Liberar o número "+pad(current)+"?")) return;
   db.ref("nums/"+current).remove(); closeNum();
 }
-function closeNum(){ document.getElementById("overlay").classList.remove("open"); current=null; }
+function closeNum(){ document.getElementById("overlay").classList.remove("open"); current=null; if(cdTimer){ clearInterval(cdTimer); cdTimer=null; } }
 
 document.getElementById("btn-admin").onclick=async function(){
   if(isAdmin){ await auth.signOut(); return; }
