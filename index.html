@@ -260,6 +260,11 @@ function setAdmin(on){
   b.textContent = on ? "🔓 Dono (ativo)" : "🔑 Modo dono";
 }
 
+// Guarda os dados do comprador NESTE aparelho, pra reservar vários números sem redigitar
+function getBuyer(){ try{ return JSON.parse(localStorage.getItem("rifa_comprador")||"{}"); }catch(e){ return {}; } }
+function saveBuyer(nome,tel){ try{ localStorage.setItem("rifa_comprador", JSON.stringify({nome,tel})); }catch(e){} }
+function clearBuyer(){ try{ localStorage.removeItem("rifa_comprador"); }catch(e){} closeNum(); openNum(current); }
+
 function st(n){ return (state[n] && state[n].status) || "livre"; }
 function pad(n){ return String(n).padStart(3,"0"); }
 function money(v){ return "R$ "+Number(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}); }
@@ -313,8 +318,12 @@ function openNum(n){
     }
   }
   else { // livre
-    h+='<label>Seu nome</label><input id="in-nome" value="'+esc(rec.nome||"")+'" placeholder="Nome">';
-    h+='<label>WhatsApp</label><input id="in-tel" value="'+esc(rec.tel||"")+'" placeholder="(00) 00000-0000">';
+    const b = getBuyer();
+    const nome0 = rec.nome || b.nome || "";
+    const tel0  = rec.tel  || b.tel  || "";
+    h+='<label>Seu nome</label><input id="in-nome" value="'+esc(nome0)+'" placeholder="Nome">';
+    h+='<label>WhatsApp</label><input id="in-tel" value="'+esc(tel0)+'" placeholder="(00) 00000-0000">';
+    if(b.nome && !isAdmin) h+='<div class="pixnote" style="background:#122015;border-color:#2f5c3a;color:#8ee6a5">✓ Dados salvos neste aparelho — é só reservar. <a href="#" onclick="clearBuyer();return false" style="color:#8ecae6">não sou eu</a></div>';
     if(PIX_CHAVE) h+='<div class="pixnote">Após reservar, faça o Pix de '+money(PRICE)+' para a chave: <b>'+esc(PIX_CHAVE)+'</b> e avise o organizador.</div>';
     h+='<div class="btns"><button class="btn btn-reservar" onclick="mark(\'reservado\')">⏳ Reservar este número</button>';
     if(isAdmin) h+='<button class="btn btn-pago" onclick="mark(\'pago\')">✅ Marcar pago (dono)</button>';
@@ -340,6 +349,7 @@ function mark(status){
   }, (err,committed)=>{
     if(!committed && !err) alert("Esse número já foi vendido.");
     else if(err) alert("Não foi possível salvar (regras de segurança). "+err);
+    else if(status==="reservado" && !isAdmin) saveBuyer(nome.trim(), tel.trim()); // lembra pro próximo número
     closeNum();
   });
 }
