@@ -334,6 +334,35 @@ function openNum(n){
 }
 function lab(s){ return s==="pago"?"VENDIDO ✓":s==="reservado"?"RESERVADO":"LIVRE"; }
 
+// Confirmação da reserva com a chave Pix pronta pra copiar
+function showPixConfirm(n){
+  current=n;
+  const sheet=document.getElementById("sheet");
+  let h='<h2>Número '+pad(n)+' reservado! ✅</h2><span class="badge reservado">RESERVADO</span>';
+  h+='<div class="locknote" style="background:#122015;border-color:#2f5c3a;color:#8ee6a5">Agora faça o Pix de <b>'+money(PRICE)+'</b> e envie o comprovante ao organizador para confirmar.</div>';
+  if(PIX_CHAVE){
+    h+='<label>Chave Pix (toque para copiar)</label>';
+    h+='<div style="display:flex;gap:8px;align-items:stretch">';
+    h+='<input id="pix-key" readonly value="'+esc(PIX_CHAVE)+'" onclick="this.select()" style="flex:1;font-family:monospace;font-size:14px">';
+    h+='<button class="btn btn-pago" id="pix-copy" style="padding:0 16px;white-space:nowrap" onclick="copyPix()">Copiar</button>';
+    h+='</div>';
+    h+='<label>Valor</label><input readonly value="'+money(PRICE)+'" style="font-weight:bold">';
+  }
+  h+='<div class="btns"><button class="btn btn-fechar" onclick="closeNum()">Fechar</button></div>';
+  sheet.innerHTML=h;
+  document.getElementById("overlay").classList.add("open");
+}
+function copyPix(){
+  const inp=document.getElementById("pix-key");
+  const btn=document.getElementById("pix-copy");
+  const done=()=>{ btn.textContent="Copiado ✓"; setTimeout(()=>{ if(btn) btn.textContent="Copiar"; },2000); };
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(PIX_CHAVE).then(done, ()=>{ inp.select(); document.execCommand("copy"); done(); });
+    } else { inp.select(); document.execCommand("copy"); done(); }
+  }catch(e){ inp.select(); }
+}
+
 function mark(status){
   if(!db){ alert("Firebase não configurado."); return; }
   if(status==="pago" && !isAdmin){ alert("Só o dono confirma pagamento."); return; }
@@ -347,10 +376,13 @@ function mark(status){
     if(cur && cur.status==="pago" && !isAdmin) return; // aborta
     return { status, nome:nome.trim(), tel:tel.trim(), ts:Date.now() };
   }, (err,committed)=>{
-    if(!committed && !err) alert("Esse número já foi vendido.");
-    else if(err) alert("Não foi possível salvar (regras de segurança). "+err);
-    else if(status==="reservado" && !isAdmin) saveBuyer(nome.trim(), tel.trim()); // lembra pro próximo número
-    closeNum();
+    if(!committed && !err){ alert("Esse número já foi vendido."); closeNum(); }
+    else if(err){ alert("Não foi possível salvar (regras de segurança). "+err); closeNum(); }
+    else if(status==="reservado" && !isAdmin){
+      saveBuyer(nome.trim(), tel.trim());       // lembra pro próximo número
+      showPixConfirm(current);                  // mostra a chave Pix pra copiar
+    }
+    else closeNum();
   });
 }
 function liberar(){
