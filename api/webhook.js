@@ -26,6 +26,13 @@ module.exports = async (req, res) => {
     const n = parseInt(pay.external_reference, 10);
     if (!n) return res.status(200).json({ ok: true, ignored: true });
 
+    // Estorno/contestação num Pix da rifa: pode ser sinal de token vazado — alerta imediato
+    if (pay.status === "refunded" || pay.status === "charged_back") {
+      await telegram("🚨 ESTORNO no Pix do número " + pad(n) + " (id " + pay.id + ", R$ " +
+        Number(pay.transaction_amount).toFixed(2).replace(".", ",") +
+        ").\n\nSe NÃO foi você que estornou, renove o Access Token no painel do Mercado Pago AGORA.");
+      return res.status(200).json({ ok: true, refund: true });
+    }
     if (pay.status !== "approved") {
       console.log("pagamento", id, "número", n, "status:", pay.status);
       return res.status(200).json({ ok: true, status: pay.status });

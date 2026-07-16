@@ -1,3 +1,6 @@
 {
-  "regions": ["gru1"]
+  "regions": ["gru1"],
+  "crons": [
+    { "path": "/api/watchdog", "schedule": "0 12 * * *" }
+  ]
 }
