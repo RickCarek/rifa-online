@@ -1,2 +1,18 @@
 BRIEFING-rifa-online.md
 rifa-online.html
+
+# arte do panfleto (gerada localmente)
+panfleto.html
+panfleto.png
+
+# segredos — NUNCA subir pro GitHub
+firebase-admin-key.json
+.env
+.env.*
+
+# backend (Vercel)
+node_modules/
+.vercel/
+
+.vercel
+.env*

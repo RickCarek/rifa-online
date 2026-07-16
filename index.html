@@ -149,6 +149,7 @@
   const RESERVE_MIN = 30;        // reserva expira em X minutos se não pagar (volta a ficar livre)
   const TG_TOKEN    = "8817534278:AAERYXBGGOTHf2QtWOj-y0C2gg96q6uD5hQ";  // token do bot do Telegram (@rifa_rrc_avisos_bot)
   const TG_CHAT     = "641715599";  // chat id do organizador no Telegram
+  const BACKEND_URL = "https://rifa-rrc.vercel.app";  // Fase 2: backend Pix automático (Mercado Pago). Vazio = Pix manual.
 </script>
 
 <div id="setupwarn" class="warn hidden">⚠️ Firebase não configurado — cole as chaves no topo do arquivo.</div>
@@ -230,7 +231,13 @@ function boot(){
     c.textContent = on ? "● conectado — atualiza em tempo real" : "● offline";
     c.className = on ? "ok" : "";
   });
-  db.ref("nums").on("value", snap=>{ state = snap.val()||{}; render(); });
+  db.ref("nums").on("value", snap=>{
+    state = snap.val()||{}; render();
+    // Fase 2: quando o webhook marca "pago", o comprador vê a confirmação na hora
+    // (só se não estiver com a tela de outro número aberta)
+    if(payingFor!=null && rawSt(payingFor)==="pago" && !isAdmin &&
+       (current===null || current===payingFor)) showPaidOk(payingFor);
+  });
   render(); // desenha o quadro imediatamente, mesmo antes do banco responder
   setInterval(render, 15000); // reservas expiradas voltam a ficar livres sem precisar recarregar
 
@@ -379,7 +386,7 @@ function openNum(n){
       h+='<button class="btn btn-fechar" onclick="closeNum()">Fechar</button></div>';
     } else {
       h+='<div class="locknote">⏳ Reservado — pague antes que o tempo acabe: <b id="cd">--:--</b></div>';
-      h+=pixBlock();
+      h+= BACKEND_URL ? '<div id="pixarea" style="text-align:center;padding:16px 0;color:#a89968">Gerando seu Pix… ⏳</div>' : pixBlock();
       h+='<div class="btns"><button class="btn btn-fechar" onclick="closeNum()">Fechar</button></div>';
     }
   }
@@ -390,7 +397,8 @@ function openNum(n){
     h+='<label>Seu nome</label><input id="in-nome" value="'+esc(nome0)+'" placeholder="Nome">';
     h+='<label>WhatsApp</label><input id="in-tel" value="'+esc(tel0)+'" placeholder="(00) 00000-0000">';
     if(b.nome && !isAdmin) h+='<div class="pixnote" style="background:#122015;border-color:#2f5c3a;color:#8ee6a5">✓ Dados salvos neste aparelho — é só reservar. <a href="#" onclick="clearBuyer();return false" style="color:#8ecae6">não sou eu</a></div>';
-    if(PIX_CHAVE) h+='<div class="pixnote">Após reservar, faça o Pix de '+money(PRICE)+' para a chave: <b>'+esc(PIX_CHAVE)+'</b> e avise o organizador.</div>';
+    if(BACKEND_URL) h+='<div class="pixnote">Ao reservar, você recebe um QR Code Pix de '+money(PRICE)+' — o pagamento é confirmado sozinho, na hora. ⚡</div>';
+    else if(PIX_CHAVE) h+='<div class="pixnote">Após reservar, faça o Pix de '+money(PRICE)+' para a chave: <b>'+esc(PIX_CHAVE)+'</b> e avise o organizador.</div>';
     h+='<div class="btns"><button class="btn btn-reservar" onclick="mark(\'reservado\')">⏳ Reservar este número</button>';
     if(isAdmin) h+='<button class="btn btn-pago" onclick="mark(\'pago\')">✅ Marcar pago (dono)</button>';
     h+='<button class="btn btn-fechar" onclick="closeNum()">Fechar</button></div>';
@@ -398,6 +406,7 @@ function openNum(n){
   sheet.innerHTML=h;
   document.getElementById("overlay").classList.add("open");
   if(s==="reservado" && !isAdmin && rec.ts) startCountdown(rec.ts); // conta o tempo restante
+  if(s==="reservado" && !isAdmin && BACKEND_URL) loadPix(n);        // QR Code Pix automático
 }
 function lab(s){ return s==="pago"?"VENDIDO ✓":s==="reservado"?"RESERVADO":"LIVRE"; }
 
@@ -419,12 +428,68 @@ function showPixConfirm(n){
   const sheet=document.getElementById("sheet");
   let h='<h2>Número '+pad(n)+' reservado! ✅</h2><span class="badge reservado">RESERVADO</span>';
   h+='<div class="locknote">⏳ Você tem <b id="cd">'+fmtLeft(RESERVE_MS)+'</b> para pagar, senão o número volta a ficar livre.</div>';
-  h+=pixBlock();
+  h+= BACKEND_URL ? '<div id="pixarea" style="text-align:center;padding:16px 0;color:#a89968">Gerando seu Pix… ⏳</div>' : pixBlock();
   h+='<div class="btns"><button class="btn btn-fechar" onclick="closeNum()">Fechar</button></div>';
   sheet.innerHTML=h;
   document.getElementById("overlay").classList.add("open");
   const ts=(state[n]&&state[n].ts)||Date.now();
   startCountdown(ts);
+  if(BACKEND_URL) loadPix(n);
+}
+
+// ── Fase 2: Pix automático via Mercado Pago ─────────────────
+let payingFor=null, colaCode="";
+async function loadPix(n){
+  payingFor=n;
+  const area=()=>document.getElementById("pixarea");
+  try{
+    const b=getBuyer(); const rec=state[n]||{};
+    const r=await fetch(BACKEND_URL+"/api/create-payment",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({numero:n, nome:rec.nome||b.nome||"", tel:rec.tel||b.tel||""})
+    });
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok || !d.copia_cola) throw new Error(d.error||"falha ao gerar Pix");
+    if(current!==n || !area()) return; // usuário fechou a tela enquanto gerava
+    colaCode=d.copia_cola;
+    let h='<div class="locknote" style="background:#122015;border-color:#2f5c3a;color:#8ee6a5;font-size:14px;text-align:left">'+
+          'Pague <b>'+money(d.valor||PRICE)+'</b> pelo QR Code ou código abaixo. <b>A confirmação é automática</b> — assim que o Pix cair, o número trava no seu nome. 🎉</div>';
+    if(d.qr_base64) h+='<img src="data:image/png;base64,'+d.qr_base64+'" alt="QR Code Pix" '+
+       'style="width:210px;max-width:80%;margin:12px auto;display:block;background:#fff;padding:10px;border-radius:12px">';
+    h+='<label style="text-align:left">Pix copia e cola — toque para copiar</label>';
+    h+='<input id="cola-key" readonly value="'+esc(colaCode)+'" onclick="copyCola()" '+
+       'style="width:100%;font-family:monospace;font-size:12px;text-align:center;padding:12px 10px;'+
+       'background:#221c15;border:2px solid #d4af37;color:#f5ecd2;border-radius:12px">';
+    h+='<button class="btn btn-pago" id="cola-copy" style="width:100%;margin-top:8px;font-size:16px" onclick="copyCola()">📋 Copiar código Pix</button>';
+    area().innerHTML=h;
+  }catch(e){
+    if(current!==n || !area()) return;
+    // plano B: chave Pix manual de sempre
+    area().style.textAlign="left";
+    area().innerHTML='<div class="locknote">⚠️ '+esc(e.message||"Não consegui gerar o QR Code agora.")+'</div>'+pixBlock();
+  }
+}
+function copyCola(){
+  const inp=document.getElementById("cola-key");
+  const btn=document.getElementById("cola-copy");
+  const done=()=>{ if(btn){ btn.textContent="Copiado ✓"; setTimeout(()=>{ if(btn) btn.textContent="📋 Copiar código Pix"; },2000); } };
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(colaCode).then(done, ()=>{ inp.select(); document.execCommand("copy"); done(); });
+    } else { inp.select(); document.execCommand("copy"); done(); }
+  }catch(e){ if(inp) inp.select(); }
+}
+// Tela de sucesso quando o webhook confirma o pagamento (via Realtime Database)
+function showPaidOk(n){
+  payingFor=null;
+  if(cdTimer){ clearInterval(cdTimer); cdTimer=null; }
+  const rec=state[n]||{};
+  const sheet=document.getElementById("sheet");
+  sheet.innerHTML='<h2>Pagamento confirmado! 🎉</h2><span class="badge pago">VENDIDO ✓</span>'+
+    '<div class="locknote" style="background:#122015;border-color:#2f5c3a;color:#8ee6a5;font-size:15px">'+
+    'O número <b>'+pad(n)+'</b> agora é seu'+(rec.nome?(', <b>'+esc(rec.nome)+'</b>'):'')+'! Boa sorte no sorteio. 🍀</div>'+
+    '<div class="btns"><button class="btn btn-pago" onclick="closeNum()">Quero mais um número 😄</button></div>';
+  document.getElementById("overlay").classList.add("open");
 }
 function copyPix(){
   const inp=document.getElementById("pix-key");

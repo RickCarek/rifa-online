@@ -1,0 +1,8 @@
+{
+  "name": "rifa-online-backend",
+  "private": true,
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}
