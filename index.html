@@ -12,6 +12,9 @@
 <meta property="og:url" content="https://rickcarek.github.io/rifa-online/">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#d4af37">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;0,900;1,600&display=swap" rel="stylesheet">
 <style>
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   :root{
@@ -30,7 +33,7 @@
   .brand{ display:flex; align-items:center; gap:12px; }
   .brand img{ width:52px; height:52px; border-radius:50%; border:2px solid var(--ouro); object-fit:cover;
     box-shadow:0 0 14px rgba(212,175,55,.35); }
-  h1{ font-size:19px; margin:0; color:var(--ouro-claro); letter-spacing:.5px; font-family:Georgia,"Times New Roman",serif; }
+  h1{ font-size:19px; margin:0; color:var(--ouro-claro); letter-spacing:.5px; font-family:'Playfair Display',Georgia,serif; }
   .sub{ font-size:12px; color:#a89968; }
   #conn{ font-size:11px; margin-top:4px; color:#fca5a5; }
   #conn.ok{ color:#e3c565; }
@@ -59,7 +62,7 @@
   .premio{ margin:14px 12px 0; background:var(--carvao); border:1px solid var(--ouro-escuro); border-radius:16px;
     overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,.5); }
   .premio .cap{ padding:10px 14px; font-size:13px; color:var(--ouro-claro); text-align:center;
-    border-top:1px solid #2e2617; font-family:Georgia,serif; letter-spacing:.4px; }
+    border-top:1px solid #2e2617; font-family:'Playfair Display',Georgia,serif; letter-spacing:.4px; }
   /* ── Carrossel ── */
   .carousel{ position:relative; }
   .track{ display:flex; overflow-x:auto; scroll-snap-type:x mandatory; scroll-behavior:smooth;
@@ -98,7 +101,7 @@
   .sheet{ background:#14100a; border-top:2px solid var(--ouro); color:#e8e0cc; width:100%;
     border-radius:20px 20px 0 0; padding:20px 18px 28px; animation:up .2s ease; }
   @keyframes up{ from{transform:translateY(100%);} to{transform:translateY(0);} }
-  .sheet h2{ margin:0 0 2px; font-size:22px; color:var(--ouro-claro); font-family:Georgia,serif; }
+  .sheet h2{ margin:0 0 2px; font-size:22px; color:var(--ouro-claro); font-family:'Playfair Display',Georgia,serif; }
   .badge{ display:inline-block; font-size:12px; font-weight:700; padding:3px 10px; border-radius:20px; margin-bottom:14px; }
   .badge.livre{ background:var(--livre); color:var(--livre-t); border:1px solid var(--livre-b); }
   .badge.reservado{ background:var(--reserv); color:var(--reserv-t); }
