@@ -3,7 +3,7 @@
 //   • resumo das vendas (batimento normal)
 //   • 🚨 se existir cobrança que NÃO foi criada pela rifa (indício de token vazado)
 //   • 🚨 se existir estorno/contestação
-const { TOTAL, pad, telegram } = require("../lib/config");
+const { TOTAL, RECONHECIDOS, pad, telegram } = require("../lib/config");
 
 module.exports = async (req, res) => {
   // Só o cron da Vercel (que envia o CRON_SECRET) pode disparar
@@ -26,6 +26,7 @@ module.exports = async (req, res) => {
     let aprovados = 0, soma = 0;
     const estornos = [], estranhos = [];
     for (const p of pays) {
+      if (RECONHECIDOS.includes(String(p.id))) continue; // já conferido pelo dono
       const n = parseInt(p.external_reference, 10);
       const daRifa = n >= 1 && n <= TOTAL && /^Rifa RRC/.test(p.description || "");
       if (!daRifa) estranhos.push(p);
