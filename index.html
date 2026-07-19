@@ -417,11 +417,21 @@ function openNum(n){
     if(b.nome && !isAdmin) h+='<div class="pixnote" style="background:#122015;border-color:#2f5c3a;color:#8ee6a5">✓ Dados salvos neste aparelho — é só reservar. <a href="#" onclick="clearBuyer();return false" style="color:#8ecae6">não sou eu</a></div>';
     if(BACKEND_URL) h+='<div class="pixnote">Ao reservar, você recebe um QR Code Pix de '+money(PRICE)+' — o pagamento é confirmado sozinho, na hora. ⚡</div>';
     else if(PIX_CHAVE) h+='<div class="pixnote">Após reservar, faça o Pix de '+money(PRICE)+' para a chave: <b>'+esc(PIX_CHAVE)+'</b> e avise o organizador.</div>';
-    h+='<div class="btns"><button class="btn btn-reservar" onclick="mark(\'reservado\')">⏳ Reservar este número</button>';
-    if(!isAdmin && BACKEND_URL){
+    h+='<div class="btns">';
+    // Com carrinho em uso, o botão principal leva ao Pix SOMADO — antes o
+    // "Reservar este número" gerava um Pix de 1 número e parecia que o
+    // carrinho "não somava" (armadilha que pegou compradores reais).
+    if(!isAdmin && BACKEND_URL && cart.length){
+      const tot = cart.includes(n) ? cart.length : cart.length+1;
+      h+='<button class="btn btn-reservar" onclick="addToCartAndPay()">⚡ Pagar com o carrinho ('+tot+' número'+(tot>1?'s':'')+' — '+money(tot*PRICE)+')</button>';
       h+= cart.includes(n)
         ? '<button class="btn" style="background:#221c15;color:#e07070;border:1.5px solid #6e2a2a" onclick="delCart()">🛒 Tirar do carrinho</button>'
-        : '<button class="btn" style="background:#221c15;color:#f0c75e;border:1.5px solid #9a7b1e" onclick="addCart()">🛒 Adicionar e escolher mais (1 Pix só)</button>';
+        : '<button class="btn" style="background:#221c15;color:#f0c75e;border:1.5px solid #9a7b1e" onclick="addCart()">🛒 Adicionar e escolher mais</button>';
+    } else {
+      h+='<button class="btn btn-reservar" onclick="mark(\'reservado\')">⏳ Reservar este número</button>';
+      if(!isAdmin && BACKEND_URL){
+        h+='<button class="btn" style="background:#221c15;color:#f0c75e;border:1.5px solid #9a7b1e" onclick="addCart()">🛒 Adicionar e escolher mais (1 Pix só)</button>';
+      }
     }
     if(isAdmin) h+='<button class="btn btn-pago" onclick="mark(\'pago\')">✅ Marcar pago (dono)</button>';
     h+='<button class="btn btn-fechar" onclick="closeNum()">Fechar</button></div>';
@@ -480,6 +490,17 @@ function addCart(){
   closeNum(); render();
 }
 function delCart(){ cart=cart.filter(x=>x!==current); closeNum(); render(); }
+// Junta o número aberto ao carrinho (se ainda não estiver) e vai direto ao Pix somado
+function addToCartAndPay(){
+  const nome=(document.getElementById("in-nome")||{}).value||"";
+  const tel=(document.getElementById("in-tel")||{}).value||"";
+  if(nome.trim()) saveBuyer(nome.trim(), tel.trim());
+  if(current!=null && !cart.includes(current)){
+    if(cart.length>=MAX_POR_PIX){ aviso("Máximo de "+MAX_POR_PIX+" números por Pix."); return; }
+    cart.push(current);
+  }
+  render(); openCartCheckout();
+}
 function openCartCheckout(){
   if(!cart.length) return;
   current=null;
