@@ -475,7 +475,7 @@ function addCart(){
   const nome=(document.getElementById("in-nome")||{}).value||"";
   const tel=(document.getElementById("in-tel")||{}).value||"";
   if(nome.trim()) saveBuyer(nome.trim(), tel.trim()); // aproveita o que já digitou
-  if(cart.length>=MAX_POR_PIX){ alert("Máximo de "+MAX_POR_PIX+" números por Pix."); return; }
+  if(cart.length>=MAX_POR_PIX){ aviso("Máximo de "+MAX_POR_PIX+" números por Pix."); return; }
   if(current!=null && !cart.includes(current)) cart.push(current);
   closeNum(); render();
 }
@@ -497,10 +497,10 @@ function openCartCheckout(){
   document.getElementById("overlay").classList.add("open");
 }
 async function doCartPay(){
-  if(!db){ alert("Firebase não configurado."); return; }
+  if(!db){ aviso("Firebase não configurado."); return; }
   const nome=(document.getElementById("in-nome")||{}).value||"";
   const tel=(document.getElementById("in-tel")||{}).value||"";
-  if(!nome.trim()){ alert("Digite o nome."); return; }
+  if(!nome.trim()){ aviso("Digite seu nome para continuar."); return; }
   const btn=document.getElementById("btn-cartpay");
   if(btn){ btn.disabled=true; btn.textContent="Reservando…"; }
   const ok=[], fail=[];
@@ -515,8 +515,8 @@ async function doCartPay(){
     });
   }
   if(!ok.length){
-    alert("Poxa, esses números acabaram de ser levados por outra pessoa. Escolha outros.");
-    cart=[]; closeNum(); render(); return;
+    avisoTela("Poxa, esses números acabaram de ser levados por outra pessoa. Escolha outros.");
+    cart=[]; render(); return;
   }
   saveBuyer(nome.trim(), tel.trim());
   notifyReserva(ok, nome.trim(), tel.trim());
@@ -610,12 +610,35 @@ function copyPix(){
   }catch(e){ if(inp) inp.select(); }
 }
 
+// Avisos dentro da tela: alert() é bloqueado no navegador embutido do
+// WhatsApp/Instagram (mesmo motivo do PIN não usar prompt()) — o comprador
+// clicava e "nada acontecia". Nunca usar alert() na jornada do comprador.
+function aviso(msg){
+  const sheet=document.getElementById("sheet");
+  if(!sheet || !document.getElementById("overlay").classList.contains("open")) return;
+  let n=document.getElementById("aviso-in");
+  if(!n){
+    n=document.createElement("div");
+    n.id="aviso-in"; n.className="locknote";
+    n.style.borderColor="#8a3333"; n.style.color="#ffb3b3";
+    sheet.prepend(n);
+  }
+  n.textContent="⚠️ "+msg;
+  n.scrollIntoView({block:"nearest"});
+}
+function avisoTela(msg){
+  const sheet=document.getElementById("sheet");
+  sheet.innerHTML='<h2>Ops! 😕</h2><div class="locknote">'+esc(msg)+'</div>'+
+    '<div class="btns"><button class="btn btn-fechar" onclick="closeNum()">Fechar</button></div>';
+  document.getElementById("overlay").classList.add("open");
+}
+
 function mark(status){
-  if(!db){ alert("Firebase não configurado."); return; }
-  if(status==="pago" && !isAdmin){ alert("Só o dono confirma pagamento."); return; }
+  if(!db){ aviso("Firebase não configurado."); return; }
+  if(status==="pago" && !isAdmin){ aviso("Só o dono confirma pagamento."); return; }
   const nome=(document.getElementById("in-nome")||{}).value||"";
   const tel=(document.getElementById("in-tel")||{}).value||"";
-  if(!nome.trim()){ alert("Digite o nome."); return; }
+  if(!nome.trim()){ aviso("Digite seu nome para continuar."); return; }
   // trava anti-duplicidade: não deixa reservar/pagar por cima de um já pago
   // (garantida também no servidor pelas regras do Realtime Database)
   const ref=db.ref("nums/"+current);
@@ -623,8 +646,8 @@ function mark(status){
     if(cur && cur.status==="pago" && !isAdmin) return; // aborta
     return { status, nome:nome.trim(), tel:tel.trim(), ts:Date.now() };
   }, (err,committed)=>{
-    if(!committed && !err){ alert("Esse número já foi vendido."); closeNum(); }
-    else if(err){ alert("Não foi possível salvar (regras de segurança). "+err); closeNum(); }
+    if(!committed && !err){ avisoTela("Esse número já foi vendido. Escolha outro."); }
+    else if(err){ avisoTela("Não foi possível salvar agora. Tente de novo em instantes."); }
     else if(status==="reservado" && !isAdmin){
       saveBuyer(nome.trim(), tel.trim());       // lembra pro próximo número
       notifyReserva(current, nome.trim(), tel.trim()); // avisa o dono no Telegram
