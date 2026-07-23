@@ -10,6 +10,9 @@ firebase-admin-key.json
 .env
 .env.*
 
+# dados de compradores — NUNCA subir pro GitHub (repo é público)
+backups/
+
 # backend (Vercel)
 node_modules/
 .vercel/
